@@ -1,7 +1,6 @@
-from flask import Flask, jsonify, send_file, request
+from flask import Flask, jsonify, send_file, request, Response
 import requests
 import os
-import io
 
 app = Flask(__name__)
 
@@ -55,17 +54,23 @@ def download_file():
     if not file_url:
         return jsonify({"error": "Missing URL"}), 400
 
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    # 💡 التعديل الأهم هنا: إجبار GitHub على إرسال الملف الثنائي وليس ملف الـ JSON
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/octet-stream" 
+    }
+    
     req = requests.get(file_url, headers=headers, stream=True)
     
     if req.status_code == 200:
-        return send_file(
-            io.BytesIO(req.content), 
-            as_attachment=True, 
-            download_name="ODEJ-Updater.exe"
+        # تمرير الملف كتيار (Stream) لتجنب استهلاك ذاكرة الخادم
+        return Response(
+            req.iter_content(chunk_size=1024 * 1024), # 1 ميغا لكل دفعة
+            content_type=req.headers.get('content-type', 'application/octet-stream'),
+            headers={'Content-Disposition': 'attachment; filename="ODEJ_Eloued.exe"'}
         )
     else:
-        return jsonify({"error": "Failed to download file"}), req.status_code
+        return jsonify({"error": "Failed to download file from GitHub"}), req.status_code
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
