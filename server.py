@@ -27,8 +27,19 @@ def check_update():
     if response.status_code == 200:
         data = response.json()
         latest_version = data["tag_name"]
+        
         if len(data["assets"]) > 0:
-            download_url = data["assets"][0]["url"] 
+            # البحث عن ملف الـ exe تحديداً
+            download_url = None
+            for asset in data["assets"]:
+                if asset["name"].endswith(".exe"):
+                    download_url = asset["url"]
+                    break
+            
+            if not download_url:
+                return jsonify({"error": "No EXE file found in this release"}), 404 
+            
+            # إذا وجد الملف، نرسل بياناته للتطبيق
             return jsonify({
                 "version": latest_version,
                 "download_endpoint": f"/download?url={download_url}"
