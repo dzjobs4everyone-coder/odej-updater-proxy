@@ -54,7 +54,7 @@ def download_file():
     if not file_url:
         return jsonify({"error": "Missing URL"}), 400
 
-    # 💡 التعديل الأهم هنا: إجبار GitHub على إرسال الملف الثنائي وليس ملف الـ JSON
+    # إجبار GitHub على إرسال الملف الثنائي
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/octet-stream" 
@@ -63,12 +63,21 @@ def download_file():
     req = requests.get(file_url, headers=headers, stream=True)
     
     if req.status_code == 200:
-        # تمرير الملف كتيار (Stream) لتجنب استهلاك ذاكرة الخادم
-        return Response(
+        # الحصول على حجم الملف من GitHub
+        content_length = req.headers.get('content-length')
+        
+        # تمرير الملف كتيار (Stream)
+        response = Response(
             req.iter_content(chunk_size=1024 * 1024), # 1 ميغا لكل دفعة
-            content_type=req.headers.get('content-type', 'application/octet-stream'),
-            headers={'Content-Disposition': 'attachment; filename="ODEJ_Eloued.exe"'}
+            content_type='application/octet-stream'
         )
+        
+        # إضافة حجم الملف للـ Headers لكي يعرف التطبيق الحجم المتوقع
+        if content_length:
+            response.headers['Content-Length'] = content_length
+        response.headers['Content-Disposition'] = 'attachment; filename="ODEJ_Eloued.exe"'
+        
+        return response
     else:
         return jsonify({"error": "Failed to download file from GitHub"}), req.status_code
 
